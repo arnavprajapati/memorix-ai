@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { navLinks } from '../../constants/data'
 
 const Navbar = () => {
@@ -32,9 +33,9 @@ const Navbar = () => {
     return (
         <nav className={`sticky top-0 z-50 border-b-2 border-black bg-white transition-all duration-300 ${scrolled ? 'shadow-[0_4px_24px_rgba(0,0,0,0.08)]' : ''}`}>
             <div className="max-w-7xl mx-auto px-8 flex items-center justify-between h-20">
-                <div className="text-2xl font-bold tracking-tight" style={{ fontFamily: 'Athletics, sans-serif' }}>
+                <Link to="/" className="text-2xl font-bold tracking-tight no-underline text-black" style={{ fontFamily: 'Athletics, sans-serif' }}>
                     MEMORIX<span className="text-accent">.</span>
-                </div>
+                </Link>
 
                 <div className="hidden md:flex items-center gap-10 text-base font-semibold">
                     {navLinks.map(label => (
@@ -49,9 +50,9 @@ const Navbar = () => {
                     ))}
                 </div>
 
-                <button className="retro-btn hidden md:flex bg-accent text-black shadow-[4px_4px_0_black] hover:shadow-[7px_7px_0_black]">
+                <Link to="/signup" className="retro-btn hidden md:flex bg-accent text-black shadow-[4px_4px_0_black] hover:shadow-[7px_7px_0_black]">
                     Start Free
-                </button>
+                </Link>
 
                 <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden bg-transparent border-none text-2xl cursor-pointer">
                     {menuOpen ? '✕' : '☰'}
@@ -70,9 +71,9 @@ const Navbar = () => {
                             {l}
                         </a>
                     ))}
-                    <button className="retro-btn self-start mt-2 bg-accent text-black shadow-[3px_3px_0_black]">
+                    <Link to="/signup" className="retro-btn self-start mt-2 bg-accent text-black shadow-[3px_3px_0_black]">
                         Start Free
-                    </button>
+                    </Link>
                 </div>
             )}
         </nav>
