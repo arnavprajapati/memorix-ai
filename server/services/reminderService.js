@@ -62,7 +62,7 @@ function buildEmailHtml(dueByDeck) {
               </table>
 
               <div style="margin-top:28px;text-align:center">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard"
+                <a href="${process.env.FRONTEND_URL}/dashboard"
                    style="background:#facc15;color:#000;padding:13px 32px;border-radius:6px;
                           text-decoration:none;font-weight:700;font-size:15px;display:inline-block">
                   Start Reviewing
