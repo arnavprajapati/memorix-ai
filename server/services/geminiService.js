@@ -19,45 +19,60 @@ const SYSTEM_PROMPT =
  * @returns {Promise<Array<{ front: string, back: string, hint: string }>>}
  */
 async function generateFlashcards(pdfText, deckName) {
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        systemInstruction: SYSTEM_PROMPT,
-    })
+    const MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash']
 
     const userPrompt =
         `Create flashcards from this content: ${deckName}\n\n` +
         pdfText.slice(0, 15000)
 
-    const MAX_RETRIES = 4
+    const MAX_RETRIES = 3
     const BASE_DELAY_MS = 2000
 
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-            const result = await model.generateContent(userPrompt)
-            const raw = result.response.text().trim()
+    let lastErr
 
-            // Strip accidental markdown code fences
-            const json = raw
-                .replace(/^```json?\s*/i, '')
-                .replace(/```\s*$/i, '')
-                .trim()
+    for (const modelName of MODELS) {
+        const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: SYSTEM_PROMPT,
+        })
 
-            return JSON.parse(json)
-        } catch (err) {
-            const is503 = err.message?.includes('503') || err.message?.includes('Service Unavailable')
-            const is429 = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Resource has been exhausted')
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                const result = await model.generateContent(userPrompt)
+                const raw = result.response.text().trim()
 
-            if ((is503 || is429) && attempt < MAX_RETRIES) {
-                const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1) // 2s, 4s, 8s
-                console.warn(`[geminiService] attempt ${attempt} failed (${is503 ? '503' : '429'}), retrying in ${delay}ms...`)
-                await new Promise(r => setTimeout(r, delay))
-                continue
+                // Strip accidental markdown code fences
+                const json = raw
+                    .replace(/^```json?\s*/i, '')
+                    .replace(/```\s*$/i, '')
+                    .trim()
+
+                return JSON.parse(json)
+            } catch (err) {
+                lastErr = err
+                const is503 = err.message?.includes('503') || err.message?.includes('Service Unavailable')
+                const is429 = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Resource has been exhausted')
+
+                if (is503 || is429) {
+                    if (attempt < MAX_RETRIES) {
+                        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1) // 2s, 4s
+                        console.warn(`[geminiService] ${modelName} attempt ${attempt} failed (${is503 ? '503' : '429'}), retrying in ${delay}ms...`)
+                        await new Promise(r => setTimeout(r, delay))
+                        continue
+                    }
+                    // All retries for this model exhausted — try next model
+                    console.warn(`[geminiService] ${modelName} exhausted all retries, trying fallback model...`)
+                    break
+                }
+
+                console.error(`[geminiService] ${modelName} non-retryable error:`, err.message)
+                throw err
             }
-
-            console.error('[geminiService] generateFlashcards failed:', err.message)
-            throw err
         }
     }
+
+    console.error('[geminiService] all models failed:', lastErr?.message)
+    throw lastErr
 }
 
 /**
