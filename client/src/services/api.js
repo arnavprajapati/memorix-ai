@@ -60,6 +60,10 @@ export async function getDueCards(userId) {
     return request(`/api/study/${userId}/due`)
 }
 
+export async function getStreak(userId) {
+    return request(`/api/study/${userId}/streak`)
+}
+
 export async function submitRating(cardId, rating, userId) {
     return request('/api/study/rate', {
         method: 'POST',

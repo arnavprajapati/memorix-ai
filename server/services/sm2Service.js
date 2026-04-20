@@ -27,7 +27,7 @@ function calculateNextReview(card, rating) {
 
         case 3: // Easy
             repetitions = repetitions + 1
-            if (repetitions === 1) interval = 1
+            if (repetitions === 1) interval = 4
             else if (repetitions === 2) interval = 4
             else interval = Math.round(interval * ease_factor * 1.3)
             ease_factor = ease_factor + 0.15

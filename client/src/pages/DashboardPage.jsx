@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { getUserDecks, getDueCards } from '../services/api'
+import { getUserDecks, getDueCards, getStreak } from '../services/api'
 
 const DashboardPage = () => {
     const { user, signOut } = useAuth()
@@ -9,6 +9,7 @@ const DashboardPage = () => {
 
     const [decks, setDecks] = useState([])
     const [dueCards, setDueCards] = useState([])
+    const [streak, setStreak] = useState(0)
     const [loading, setLoading] = useState(true)
 
     const name = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Student'
@@ -17,12 +18,14 @@ const DashboardPage = () => {
         if (!user?.id) return
         const load = async () => {
             try {
-                const [d, due] = await Promise.all([
+                const [d, due, streakData] = await Promise.all([
                     getUserDecks(user.id),
                     getDueCards(user.id),
+                    getStreak(user.id),
                 ])
                 setDecks(d)
                 setDueCards(due)
+                setStreak(streakData.streak ?? 0)
             } catch (err) {
                 console.error('[DashboardPage]', err.message)
             } finally {
@@ -54,7 +57,7 @@ const DashboardPage = () => {
     const stats = [
         { val: dueCards.length, label: 'Cards Due' },
         { val: learnedCount, label: 'Cards Learned' },
-        { val: '🔥 1', label: 'Day Streak' },
+        { val: `🔥 ${streak}`, label: 'Day Streak' },
         { val: decks.length, label: 'Decks' },
     ]
 

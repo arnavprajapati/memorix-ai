@@ -12,12 +12,100 @@ const RATINGS = [
     { label: 'Easy', emoji: '😎', value: 3, bg: 'bg-[#F5C518]', key: '4' },
 ]
 
-const STAT_COLORS = {
-    again: 'text-red-600',
-    hard: 'text-orange-500',
-    good: 'text-blue-600',
-    easy: 'text-green-600',
+const RATING_META = [
+    { label: 'Again', emoji: '😵', color: '#dc2626', desc: 'Completely forgot', value: 0 },
+    { label: 'Hard', emoji: '😐', color: '#ea580c', desc: 'Recalled with effort', value: 1 },
+    { label: 'Good', emoji: '🙂', color: '#2563eb', desc: 'Recalled correctly', value: 2 },
+    { label: 'Easy', emoji: '😎', color: '#16a34a', desc: 'Effortless recall', value: 3 },
+]
+
+// Mirror of server sm2Service — calculates next interval client-side for preview
+function previewInterval(card, rating) {
+    let { interval = 1, ease_factor = 2.5, repetitions = 0 } = card
+    switch (rating) {
+        case 0: interval = 1; break
+        case 1: interval = Math.max(1, Math.round(interval * 1.2)); break
+        case 2:
+            repetitions = repetitions + 1
+            if (repetitions === 1) interval = 1
+            else if (repetitions === 2) interval = 4
+            else interval = Math.round(interval * ease_factor)
+            break
+        case 3:
+            repetitions = repetitions + 1
+            if (repetitions === 1) interval = 4
+            else if (repetitions === 2) interval = 4
+            else interval = Math.round(interval * ease_factor * 1.3)
+            break
+        default: break
+    }
+    return interval
 }
+
+function formatNextDate(days) {
+    if (days === 1) return 'Tomorrow'
+    const d = new Date()
+    d.setDate(d.getDate() + days)
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
+
+// ── Rating Guide Panel ────────────────────────────────────────────────────────
+const RatingGuide = ({ onClose, card }) => (
+    <div style={{
+        position: 'fixed',
+        right: '24px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 40,
+        width: '240px',
+        border: '2px solid black',
+        backgroundColor: 'white',
+        boxShadow: '5px 5px 0 black',
+    }}>
+        <div style={{
+            borderBottom: '2px solid black',
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#F5C518',
+        }}>
+            <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>If you click…</span>
+            <button
+                onClick={onClose}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '16px', lineHeight: 1 }}
+            >✕</button>
+        </div>
+        {RATING_META.map(({ label, emoji, color, desc, value }) => {
+            const days = card ? previewInterval(card, value) : null
+            const nextLabel = days !== null ? formatNextDate(days) : '—'
+            return (
+                <div key={label} style={{
+                    padding: '14px 16px',
+                    borderBottom: '1px solid rgba(0,0,0,0.08)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '20px' }}>{emoji}</span>
+                            <span style={{ fontSize: '16px', fontWeight: 800, color }}>{label}</span>
+                        </div>
+                        <span style={{
+                            fontSize: '12px', fontWeight: 800,
+                            color: 'white',
+                            backgroundColor: color,
+                            padding: '2px 8px',
+                            borderRadius: '2px',
+                        }}>{nextLabel}</span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.45)', margin: 0 }}>{desc}</p>
+                </div>
+            )
+        })}
+    </div>
+)
 
 // ── All-done screen ───────────────────────────────────────────────────────────
 const AllDoneScreen = ({ deckId, nextDue }) => (
@@ -42,48 +130,138 @@ const AllDoneScreen = ({ deckId, nextDue }) => (
 )
 
 // ── Session complete screen ───────────────────────────────────────────────────
-const SessionComplete = ({ deckId, stats, total }) => (
-    <CenteredCard>
-        <span className="text-6xl">🎉</span>
-        <h2 className="text-3xl font-extrabold text-black mt-4" style={{ fontFamily: 'Athletics, sans-serif' }}>
-            Session Complete!
-        </h2>
-        <p className="text-base text-black/50 mt-2">You reviewed {total} card{total !== 1 ? 's' : ''} today</p>
+const STAT_ITEMS = [
+    { label: 'Again', key: 'again', color: '#dc2626', border: '#fca5a5', emoji: '😵' },
+    { label: 'Hard', key: 'hard', color: '#ea580c', border: '#fdba74', emoji: '😐' },
+    { label: 'Good', key: 'good', color: '#2563eb', border: '#93c5fd', emoji: '🙂' },
+    { label: 'Easy', key: 'easy', color: '#16a34a', border: '#86efac', emoji: '😎' },
+]
 
-        <div className="grid grid-cols-2 gap-3 mt-8 w-full max-w-sm">
-            {[
-                { label: 'Again', key: 'again', color: 'text-red-600', border: 'border-red-300' },
-                { label: 'Hard', key: 'hard', color: 'text-orange-500', border: 'border-orange-300' },
-                { label: 'Good', key: 'good', color: 'text-blue-600', border: 'border-blue-300' },
-                { label: 'Easy', key: 'easy', color: 'text-green-600', border: 'border-green-300' },
-            ].map(({ label, key, color, border }) => (
-                <div key={key} className={`border-2 ${border} shadow-[3px_3px_0_black] p-4 text-center bg-white`}>
-                    <div className={`text-2xl font-extrabold ${color}`} style={{ fontFamily: 'Athletics, sans-serif' }}>
-                        {stats[key]}
+const SessionComplete = ({ deckId, stats, total }) => {
+    const accuracy = total > 0 ? Math.round(((stats.good + stats.easy) / total) * 100) : 0
+    const needsWork = stats.again + stats.hard
+    const mastered = stats.good + stats.easy
+    return (
+        <div className="relative min-h-screen bg-white">
+            <div className="retro-grid absolute inset-0" />
+            <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-16">
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'center' }}>
+
+                    {/* ── Main card ── */}
+                    <div className="w-full border-2 border-black bg-white shadow-[6px_6px_0_black] p-10 flex flex-col items-center text-center"
+                        style={{ maxWidth: '420px' }}>
+                        <span style={{ fontSize: '56px' }}>🎉</span>
+                        <h2 className="text-3xl font-extrabold text-black mt-4" style={{ fontFamily: 'Athletics, sans-serif' }}>
+                            Session Complete!
+                        </h2>
+                        <p className="text-base mt-2" style={{ color: 'rgba(0,0,0,0.45)' }}>
+                            You reviewed <strong>{total}</strong> card{total !== 1 ? 's' : ''} today
+                        </p>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '28px', width: '100%' }}>
+                            {STAT_ITEMS.map(({ label, key, color, border, emoji }) => (
+                                <div key={key} style={{
+                                    border: `2px solid ${border}`,
+                                    boxShadow: '3px 3px 0 black',
+                                    padding: '16px 8px',
+                                    textAlign: 'center',
+                                    backgroundColor: 'white',
+                                }}>
+                                    <div style={{ fontSize: '28px', fontWeight: 900, color, fontFamily: 'Athletics, sans-serif' }}>
+                                        {stats[key]}
+                                    </div>
+                                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.45)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                        {label}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <p className="mt-6 text-base font-semibold" style={{ color: 'rgba(0,0,0,0.55)' }}>🔥 Keep your streak going!</p>
+
+                        <div style={{ display: 'flex', gap: '12px', marginTop: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            <Link
+                                to={`/deck/${deckId}`}
+                                className="retro-btn bg-white text-black border-2 border-black shadow-[4px_4px_0_black] hover:shadow-[6px_6px_0_black] px-6 py-3 font-bold"
+                            >
+                                Back to Deck
+                            </Link>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="retro-btn bg-[#F5C518] text-black border-2 border-black shadow-[4px_4px_0_black] hover:shadow-[6px_6px_0_black] px-6 py-3 font-bold"
+                            >
+                                Review Again
+                            </button>
+                        </div>
                     </div>
-                    <div className="text-xs font-semibold text-black/50 mt-1 uppercase tracking-wider">{label}</div>
+
+                    {/* ── Side summary panel ── */}
+                    <div style={{
+                        width: '220px',
+                        border: '2px solid black',
+                        backgroundColor: 'white',
+                        boxShadow: '5px 5px 0 black',
+                        flexShrink: 0,
+                    }}>
+                        <div style={{
+                            borderBottom: '2px solid black',
+                            padding: '10px 16px',
+                            backgroundColor: '#F5C518',
+                        }}>
+                            <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Session Summary</span>
+                        </div>
+
+                        {/* Accuracy */}
+                        <div style={{ padding: '16px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                            <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Accuracy</p>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                                <span style={{ fontSize: '36px', fontWeight: 900, color: accuracy >= 70 ? '#16a34a' : accuracy >= 40 ? '#ea580c' : '#dc2626', fontFamily: 'Athletics, sans-serif' }}>{accuracy}%</span>
+                            </div>
+                            <div style={{ marginTop: '8px', height: '8px', backgroundColor: '#e5e5e5', border: '1px solid black' }}>
+                                <div style={{ height: '100%', width: `${accuracy}%`, backgroundColor: accuracy >= 70 ? '#16a34a' : accuracy >= 40 ? '#F5C518' : '#dc2626', transition: 'width 0.6s ease' }} />
+                            </div>
+                        </div>
+
+                        {/* Mastered vs Needs Work */}
+                        <div style={{ padding: '16px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '28px', fontWeight: 900, color: '#16a34a', fontFamily: 'Athletics, sans-serif' }}>{mastered}</div>
+                                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.4)', textTransform: 'uppercase' }}>Mastered</div>
+                                </div>
+                                <div style={{ width: '1px', backgroundColor: 'rgba(0,0,0,0.1)' }} />
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '28px', fontWeight: 900, color: '#dc2626', fontFamily: 'Athletics, sans-serif' }}>{needsWork}</div>
+                                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.4)', textTransform: 'uppercase' }}>Needs Work</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Per-rating breakdown */}
+                        <div style={{ padding: '16px' }}>
+                            <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>Breakdown</p>
+                            {STAT_ITEMS.map(({ label, key, color, emoji }) => {
+                                const pct = total > 0 ? Math.round((stats[key] / total) * 100) : 0
+                                return (
+                                    <div key={key} style={{ marginBottom: '10px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 700, color }}>{emoji} {label}</span>
+                                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(0,0,0,0.5)' }}>{stats[key]} ({pct}%)</span>
+                                        </div>
+                                        <div style={{ height: '6px', backgroundColor: '#e5e5e5', border: '1px solid rgba(0,0,0,0.1)' }}>
+                                            <div style={{ height: '100%', width: `${pct}%`, backgroundColor: color, transition: 'width 0.5s ease' }} />
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
                 </div>
-            ))}
+            </div>
         </div>
-
-        <p className="mt-6 text-base font-semibold text-black/60">🔥 Keep your streak going!</p>
-
-        <div className="flex gap-4 mt-6 flex-wrap justify-center">
-            <Link
-                to={`/deck/${deckId}`}
-                className="retro-btn bg-white text-black border-2 border-black shadow-[4px_4px_0_black] hover:shadow-[6px_6px_0_black] px-6 py-3 font-bold"
-            >
-                Back to Deck
-            </Link>
-            <button
-                onClick={() => window.location.reload()}
-                className="retro-btn bg-[#F5C518] text-black border-2 border-black shadow-[4px_4px_0_black] hover:shadow-[6px_6px_0_black] px-6 py-3 font-bold"
-            >
-                Review Again
-            </button>
-        </div>
-    </CenteredCard>
-)
+    )
+}
 
 // ── Centred card shell ────────────────────────────────────────────────────────
 const CenteredCard = ({ children }) => (
@@ -113,6 +291,7 @@ const StudyPage = () => {
     const [sessionDone, setSessionDone] = useState(false)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [showGuide, setShowGuide] = useState(true)
 
     // ── Fetch ─────────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -367,6 +546,16 @@ const StudyPage = () => {
                         </p>
                     </div>
                 </div>
+
+                {/* ── Rating Guide (right side, visible when flipped) ── */}
+                {isFlipped && showGuide && <RatingGuide onClose={() => setShowGuide(false)} card={card} />}
+                {isFlipped && !showGuide && (
+                    <button
+                        onClick={() => setShowGuide(true)}
+                        title="How ratings work"
+                        className="fixed right-5 top-1/2 -translate-y-1/2 z-40 w-9 h-9 border-2 border-black bg-[#F5C518] shadow-[3px_3px_0_black] cursor-pointer font-extrabold text-base"
+                    >?</button>
+                )}
 
                 {/* ── Show Answer / Rating buttons (outside card) ── */}
                 <div style={{ width: '100%', maxWidth: '620px', marginTop: '20px' }}>

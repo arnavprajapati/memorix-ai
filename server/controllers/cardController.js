@@ -28,8 +28,21 @@ async function uploadAndGenerateCards(req, res) {
         if (!pdfText) return res.status(422).json({ error: 'No text found in PDF' })
 
         // Step 2: Generate flashcards via Gemini
-        const generated = await generateFlashcards(pdfText, deckName || 'Untitled Deck')
-        if (!generated.length) {
+        let generated
+        try {
+            generated = await generateFlashcards(pdfText, deckName || 'Untitled Deck')
+        } catch (err) {
+            const is503 = err.message?.includes('503') || err.message?.includes('Service Unavailable')
+            const is429 = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Resource has been exhausted')
+            if (is503) {
+                return res.status(503).json({ error: 'Gemini is temporarily overloaded. Please try again in a moment.' })
+            }
+            if (is429) {
+                return res.status(429).json({ error: 'Gemini quota exceeded. Please try again later.' })
+            }
+            return res.status(422).json({ error: 'Gemini could not generate flashcards from this content' })
+        }
+        if (!generated?.length) {
             return res.status(422).json({ error: 'Gemini could not generate flashcards from this content' })
         }
 

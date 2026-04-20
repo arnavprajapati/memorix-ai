@@ -8,6 +8,7 @@ const LOADING_MESSAGES = [
     'Finding key concepts... 🧠',
     'Building your deck... ⚡',
     'Almost ready... 🎉',
+    'Gemini is busy, retrying... ⏳',
 ]
 
 // Defined outside so it never re-mounts on state changes

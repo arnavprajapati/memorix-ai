@@ -7,6 +7,7 @@ const SYSTEM_PROMPT =
     'Generate 20-25 high quality flashcards from this text. ' +
     'Mix of types: definitions, concepts, applications, edge cases, examples. ' +
     'NOT shallow cards. Deep understanding cards. ' +
+    'For ALL mathematical expressions, variables, formulas, and equations use LaTeX delimiters: $...$ for inline math and $$...$$ for block equations. NEVER use backticks for math. ' +
     'Return ONLY a valid JSON array with NO markdown, NO explanation, NO code fences. ' +
     'Each object MUST have exactly these keys: "front" (the question), "back" (the answer), "hint" (a short hint or null). ' +
     'Example: [{"front":"What is X?","back":"X is ...","hint":"Think about Y"}]'
@@ -27,20 +28,35 @@ async function generateFlashcards(pdfText, deckName) {
         `Create flashcards from this content: ${deckName}\n\n` +
         pdfText.slice(0, 15000)
 
-    try {
-        const result = await model.generateContent(userPrompt)
-        const raw = result.response.text().trim()
+    const MAX_RETRIES = 4
+    const BASE_DELAY_MS = 2000
 
-        // Strip accidental markdown code fences
-        const json = raw
-            .replace(/^```json?\s*/i, '')
-            .replace(/```\s*$/i, '')
-            .trim()
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const result = await model.generateContent(userPrompt)
+            const raw = result.response.text().trim()
 
-        return JSON.parse(json)
-    } catch (err) {
-        console.error('[geminiService] generateFlashcards failed:', err.message)
-        return []
+            // Strip accidental markdown code fences
+            const json = raw
+                .replace(/^```json?\s*/i, '')
+                .replace(/```\s*$/i, '')
+                .trim()
+
+            return JSON.parse(json)
+        } catch (err) {
+            const is503 = err.message?.includes('503') || err.message?.includes('Service Unavailable')
+            const is429 = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Resource has been exhausted')
+
+            if ((is503 || is429) && attempt < MAX_RETRIES) {
+                const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1) // 2s, 4s, 8s
+                console.warn(`[geminiService] attempt ${attempt} failed (${is503 ? '503' : '429'}), retrying in ${delay}ms...`)
+                await new Promise(r => setTimeout(r, delay))
+                continue
+            }
+
+            console.error('[geminiService] generateFlashcards failed:', err.message)
+            throw err
+        }
     }
 }
 

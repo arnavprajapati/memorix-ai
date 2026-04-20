@@ -73,4 +73,50 @@ async function submitRating(req, res) {
     }
 }
 
-module.exports = { getDueCards, submitRating }
+// GET /api/study/:userId/streak
+async function getStreak(req, res) {
+    try {
+        const { userId } = req.params
+
+        const { data, error } = await supabase
+            .from('study_logs')
+            .select('reviewed_at')
+            .eq('user_id', userId)
+            .order('reviewed_at', { ascending: false })
+
+        if (error) throw error
+
+        if (!data || data.length === 0) return res.json({ streak: 0 })
+
+        // Get unique YYYY-MM-DD dates, most recent first
+        const dates = [...new Set(data.map(l => l.reviewed_at.slice(0, 10)))]
+        dates.sort((a, b) => b.localeCompare(a))
+
+        const today = new Date().toISOString().slice(0, 10)
+        const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+
+        // Streak must start from today or yesterday (not broken yet)
+        if (dates[0] !== today && dates[0] !== yesterday) {
+            return res.json({ streak: 0 })
+        }
+
+        let streak = 1
+        for (let i = 1; i < dates.length; i++) {
+            const prev = new Date(dates[i - 1] + 'T00:00:00Z')
+            const curr = new Date(dates[i] + 'T00:00:00Z')
+            const diffDays = Math.round((prev - curr) / (1000 * 60 * 60 * 24))
+            if (diffDays === 1) {
+                streak++
+            } else {
+                break
+            }
+        }
+
+        res.json({ streak })
+    } catch (err) {
+        console.error('[studyController] getStreak:', err.message)
+        res.status(500).json({ error: err.message })
+    }
+}
+
+module.exports = { getDueCards, submitRating, getStreak }
