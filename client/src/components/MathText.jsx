@@ -60,5 +60,3 @@ const MathText = ({ text }) => {
 }
 
 export default MathText
-
-export default MathText
