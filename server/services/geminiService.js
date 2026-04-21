@@ -1,6 +1,9 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+const genAI = new GoogleGenerativeAI(
+    process.env.GEMINI_API_KEY,
+    { apiVersion: 'v1' }
+)
 
 const SYSTEM_PROMPT =
     'You are an expert teacher creating flashcards. ' +
@@ -19,14 +22,14 @@ const SYSTEM_PROMPT =
  * @returns {Promise<Array<{ front: string, back: string, hint: string }>>}
  */
 async function generateFlashcards(pdfText, deckName) {
-    const MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash']
+    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest']
 
     const userPrompt =
         `Create flashcards from this content: ${deckName}\n\n` +
         pdfText.slice(0, 15000)
 
-    const MAX_RETRIES = 3
-    const BASE_DELAY_MS = 2000
+    const MAX_RETRIES = 2
+    const BASE_DELAY_MS = 1000
 
     let lastErr
 
@@ -62,6 +65,13 @@ async function generateFlashcards(pdfText, deckName) {
                     }
                     // All retries for this model exhausted — try next model
                     console.warn(`[geminiService] ${modelName} exhausted all retries, trying fallback model...`)
+                    break
+                }
+
+                // 404 or model-not-found → skip to next model
+                const is404 = err.message?.includes('404') || err.message?.includes('not found') || err.message?.includes('NOT_FOUND')
+                if (is404) {
+                    console.warn(`[geminiService] ${modelName} not found, trying fallback model...`)
                     break
                 }
 
