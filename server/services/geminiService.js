@@ -49,8 +49,10 @@ async function generateFlashcards(pdfText, deckName) {
                     .replace(/^```json?\s*/i, '')
                     .replace(/```\s*$/i, '')
                     .trim()
-                    
-                const sanitized = json.replace(/\\(?!["\\/bfnrtu])/g, '\\\\')
+
+                // Only preserve valid JSON escapes: \" \\ \/ \b \f \n \r \t and \uXXXX (exactly 4 hex digits)
+                // This correctly escapes LaTeX like \underbrace, \uparrow (old regex let \u* slip through)
+                const sanitized = json.replace(/\\(?!["\\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\')
 
                 return JSON.parse(sanitized)
             } catch (err) {
