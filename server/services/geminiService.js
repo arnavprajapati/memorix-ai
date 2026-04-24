@@ -22,7 +22,7 @@ const SYSTEM_PROMPT =
  * @returns {Promise<Array<{ front: string, back: string, hint: string }>>}
  */
 async function generateFlashcards(pdfText, deckName) {
-    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest']
+    const MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash'] // retry same model multiple times before fallback, as availability can be inconsistent
 
     const userPrompt =
         `Create flashcards from this content: ${deckName}\n\n` +
