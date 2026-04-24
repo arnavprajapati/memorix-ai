@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai')
+const { jsonrepair } = require('jsonrepair')
 
 const genAI = new GoogleGenerativeAI(
     process.env.GEMINI_API_KEY,
@@ -50,11 +51,8 @@ async function generateFlashcards(pdfText, deckName) {
                     .replace(/```\s*$/i, '')
                     .trim()
 
-                // Only preserve valid JSON escapes: \" \\ \/ \b \f \n \r \t and \uXXXX (exactly 4 hex digits)
-                // This correctly escapes LaTeX like \underbrace, \uparrow (old regex let \u* slip through)
-                const sanitized = json.replace(/\\(?!["\\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\')
-
-                return JSON.parse(sanitized)
+                // Use jsonrepair to handle unescaped LaTeX backslashes and any other LLM JSON quirks
+                return JSON.parse(jsonrepair(json))
             } catch (err) {
                 lastErr = err
                 const is503 = err.message?.includes('503') || err.message?.includes('Service Unavailable')
