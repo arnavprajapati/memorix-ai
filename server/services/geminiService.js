@@ -49,8 +49,10 @@ async function generateFlashcards(pdfText, deckName) {
                     .replace(/^```json?\s*/i, '')
                     .replace(/```\s*$/i, '')
                     .trim()
+                    
+                const sanitized = json.replace(/\\(?!["\\/bfnrtu])/g, '\\\\')
 
-                return JSON.parse(json)
+                return JSON.parse(sanitized)
             } catch (err) {
                 lastErr = err
                 const is503 = err.message?.includes('503') || err.message?.includes('Service Unavailable')
