@@ -38,5 +38,3 @@ Upload any PDF. AI generates flashcards. Spaced repetition tells you when to rev
 - Backend → Render
 - Database → Supabase
 - Vector DB → Pinecone
-
----
